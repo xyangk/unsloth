@@ -683,23 +683,28 @@ def LlamaModel_fast_forward(
 
     # Gemma2 has alternating SWA and global attn
     if IS_GEMMA2 and not hasattr(self, "SWA_mask"):
-        n = self.config.max_position_embeddings
-        # masked_fill is making stuff slower!
-        # self. GA_mask = create_boolean_mask(n = n, sliding_window = 0)
-        # self.SWA_mask = create_boolean_mask(n = n, sliding_window = self.config.sliding_window)
-        from transformers.modeling_attn_mask_utils import AttentionMaskConverter
-        self.SWA_mask = AttentionMaskConverter(
-            is_causal = True,
-            sliding_window = self.config.sliding_window,
-        )\
-            .to_causal_4d(1, n, n, dtype = inputs_embeds.dtype, device = "cuda:0",)\
-            .squeeze(0).squeeze(0)
+        if HAS_FLASH_ATTENTION_SOFTCAPPING:
+            self.SWA_mask = True
+            self.GA_mask  = False
+        else:
+            n = self.config.max_position_embeddings
+            # masked_fill is making stuff slower!
+            # self. GA_mask = create_boolean_mask(n = n, sliding_window = 0)
+            # self.SWA_mask = create_boolean_mask(n = n, sliding_window = self.config.sliding_window)
+            from transformers.modeling_attn_mask_utils import AttentionMaskConverter
+            self.SWA_mask = AttentionMaskConverter(
+                is_causal = True,
+                sliding_window = self.config.sliding_window,
+            )\
+                .to_causal_4d(1, n, n, dtype = inputs_embeds.dtype, device = "cuda:0",)\
+                .squeeze(0).squeeze(0)
 
-        self.GA_mask = AttentionMaskConverter(
-            is_causal = True,
-        )\
-            .to_causal_4d(1, n, n, dtype = inputs_embeds.dtype, device = "cuda:0",)\
-            .squeeze(0).squeeze(0)
+            self.GA_mask = AttentionMaskConverter(
+                is_causal = True,
+            )\
+                .to_causal_4d(1, n, n, dtype = inputs_embeds.dtype, device = "cuda:0",)\
+                .squeeze(0).squeeze(0)
+        pass
     pass
 
     # Go through every layer!
@@ -1392,6 +1397,7 @@ class FastLlamaModel:
             padding_side      = "right",
             token             = token,
             trust_remote_code = trust_remote_code,
+            fix_tokenizer     = fix_tokenizer,
         )
 
         model, tokenizer = patch_tokenizer(model, tokenizer)
@@ -1568,6 +1574,30 @@ class FastLlamaModel:
             internal_model = internal_model.model
         pass
         internal_model._saved_temp_tokenizer = tokenizer
+
+        # Also fix torch_dtype
+        internal_model = model
+        while hasattr(internal_model, "model"):
+            if hasattr(internal_model, "config"):
+                if   internal_model.config.torch_dtype ==  "float32":
+                    internal_model.config.torch_dtype = torch.float32
+                elif internal_model.config.torch_dtype == "bfloat16":
+                    internal_model.config.torch_dtype = torch.bfloat16
+                elif internal_model.config.torch_dtype ==  "float16":
+                    internal_model.config.torch_dtype = torch.float16
+                pass
+            pass
+            internal_model = internal_model.model
+        pass
+        if hasattr(internal_model, "config"):
+            if   internal_model.config.torch_dtype ==  "float32":
+                internal_model.config.torch_dtype = torch.float32
+            elif internal_model.config.torch_dtype == "bfloat16":
+                internal_model.config.torch_dtype = torch.bfloat16
+            elif internal_model.config.torch_dtype ==  "float16":
+                internal_model.config.torch_dtype = torch.float16
+            pass
+        pass
         
         return model, tokenizer
     pass

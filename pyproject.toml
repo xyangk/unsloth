@@ -47,57 +47,37 @@ huggingface = [
     "peft>=0.7.1,!=0.11.0",
     "protobuf<4.0.0",
     "huggingface_hub",
-    "hf-transfer",
+    "hf_transfer",
 ]
 cu118only = [
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.22.post7%2Bcu118-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.22.post7%2Bcu118-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.22.post7%2Bcu118-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.22.post7",
 ]
 cu121only = [
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.22.post7-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.22.post7-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.22.post7-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.22.post7",
 ]
 cu118onlytorch211 = [
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.23%2Bcu118-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.23%2Bcu118-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.23%2Bcu118-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.23",
 ]
 cu121onlytorch211 = [
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.23-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.23-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.23-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.23",
 ]
 cu118onlytorch212 = [
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.23.post1%2Bcu118-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.23.post1%2Bcu118-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.23.post1%2Bcu118-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.23.post1",
 ]
 cu121onlytorch212 = [
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.23.post1-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.23.post1-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.23.post1-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.23.post1",
 ]
 cu118onlytorch220 = [
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.24%2Bcu118-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.24%2Bcu118-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.24%2Bcu118-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.24",
 ]
 cu121onlytorch220 = [
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.24-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.24-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.24-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.24",
 ]
 cu118onlytorch230 = [
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.26.post1%2Bcu118-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.26.post1%2Bcu118-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu118/xformers-0.0.26.post1%2Bcu118-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.26.post1",
 ]
 cu121onlytorch230 = [
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.26.post1-cp39-cp39-manylinux2014_x86_64.whl ; python_version=='3.9'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.26.post1-cp310-cp310-manylinux2014_x86_64.whl ; python_version=='3.10'",
-    "xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.26.post1-cp311-cp311-manylinux2014_x86_64.whl ; python_version=='3.11'",
+    "xformers==0.0.26.post1",
 ]
 
 cu118 = [
@@ -171,7 +151,7 @@ colab-ampere-torch211 = [
     "unsloth[cu121onlytorch211]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 colab-torch220 = [
     "unsloth[huggingface]",
@@ -184,7 +164,7 @@ colab-ampere-torch220 = [
     "unsloth[cu121onlytorch220]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 colab-new = [
     "packaging",
@@ -198,7 +178,7 @@ colab-new = [
     "numpy",
     "protobuf<4.0.0",
     "huggingface_hub",
-    "hf-transfer",
+    "hf_transfer",
 ]
 colab-no-deps = [
     "accelerate>=0.26.1",
@@ -215,7 +195,7 @@ colab-ampere = [
     "unsloth[colab-ampere-torch220]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu118-ampere = [
     "unsloth[huggingface]",
@@ -223,7 +203,7 @@ cu118-ampere = [
     "unsloth[cu118only]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu121-ampere = [
     "unsloth[huggingface]",
@@ -231,7 +211,7 @@ cu121-ampere = [
     "unsloth[cu121only]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu118-ampere-torch211 = [
     "unsloth[huggingface]",
@@ -239,7 +219,7 @@ cu118-ampere-torch211 = [
     "unsloth[cu118onlytorch211]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu121-ampere-torch211 = [
     "unsloth[huggingface]",
@@ -247,7 +227,7 @@ cu121-ampere-torch211 = [
     "unsloth[cu121onlytorch211]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu118-ampere-torch220 = [
     "unsloth[huggingface]",
@@ -255,7 +235,7 @@ cu118-ampere-torch220 = [
     "unsloth[cu118onlytorch220]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu121-ampere-torch220 = [
     "unsloth[huggingface]",
@@ -263,7 +243,7 @@ cu121-ampere-torch220 = [
     "unsloth[cu121onlytorch220]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu118-ampere-torch230 = [
     "unsloth[huggingface]",
@@ -271,7 +251,7 @@ cu118-ampere-torch230 = [
     "unsloth[cu118onlytorch230]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 cu121-ampere-torch230 = [
     "unsloth[huggingface]",
@@ -279,7 +259,7 @@ cu121-ampere-torch230 = [
     "unsloth[cu121onlytorch230]",
     "packaging",
     "ninja",
-    "flash-attn",
+    "flash-attn>=2.6.3",
 ]
 
 [project.urls]
