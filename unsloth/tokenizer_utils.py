@@ -597,8 +597,34 @@ def fix_chat_template(tokenizer):
     if chat_template is None: return None
 
     ### 1. Check if add_generation_prompt works
+    # Check for ShareGPT style first
+    is_sharegpt = None
+    try:
+        messages = [
+            {"role": "user", "content": "Who are you?"},
+        ]
+        tokenizer.apply_chat_template(messages, add_generation_prompt = False, tokenize = False)
+        is_sharegpt = False
+    except:
+        try:
+            messages = [
+                {"from": "human", "value": "Who are you?"},
+            ]
+            tokenizer.apply_chat_template(messages, add_generation_prompt = False, tokenize = False)
+            is_sharegpt = True
+        except:
+            is_sharegpt = None
+        pass
+    pass
+
+    # Not ShareGPT or HF style - just return
+    if is_sharegpt is None: return chat_template
+
+    # Tokenize
     messages = [
-        {"role": "user", "content": "Who are you?"},
+        {"role": "user", "content": "Who are you?"} \
+        if not is_sharegpt else \
+        {"from": "human", "value": "Who are you?"}
     ]
     no  = tokenizer.apply_chat_template(messages, add_generation_prompt = False, tokenize = False)
     yes = tokenizer.apply_chat_template(messages, add_generation_prompt =  True, tokenize = False)
@@ -801,7 +827,27 @@ def fix_untrained_tokens(model, tokenizer, train_dataset, eps = 1e-16):
     # Get untrained tokens
     indicator_untrained1 = torch.amax(embedding_matrix, axis = 1) <= eps
     # Check lm_head as well
+
+    # Does NOT work for Llama 3.1!!
     indicator_untrained2 = torch.amax(lm_head_matrix,   axis = 1) <= eps
+
+    # We instead check for repeated vectors
+    lm_head_where = torch.where(indicator_untrained1)[0]
+    lm_head_bad = lm_head_matrix[lm_head_where]
+    lm_head_bad = lm_head_bad.cpu().float().numpy().round(3)
+    from collections import Counter
+    counter = Counter()
+    for row in lm_head_bad: counter[hash(row.data.tobytes())] += 1
+    counter = Counter({k: c for k, c in counter.items() if c >= 2})
+
+    lm_head_where = lm_head_where.cpu().numpy()
+    final_bad_lm_head = []
+    for j, row in enumerate(lm_head_bad):
+        if hash(row.data.tobytes()) in counter:
+            final_bad_lm_head.append(lm_head_where[j])
+    indicator_untrained2 = indicator_untrained2 | torch.zeros_like(indicator_untrained2)
+    indicator_untrained2[final_bad_lm_head] = True
+
     # Combine both checks
     indicator_untrained = indicator_untrained1 & indicator_untrained2
     
@@ -1063,6 +1109,7 @@ from inspect import getsource
 import trl.trainer.sft_trainer
 from trl.trainer.sft_trainer import *
 from transformers.trainer import *
+from trl.trainer.sft_trainer import neftune_post_forward_hook
 
 def patch_sft_trainer_tokenizer():
     """
@@ -1096,44 +1143,73 @@ def patch_sft_trainer_tokenizer():
     pass
 
     # Patch train with fix_untrained_tokens
-    function_name, replacer = "train", "if resume_from_checkpoint is False:"
-    function = getsource(eval(f"trl.trainer.sft_trainer.SFTTrainer.{function_name}"))
-    where = function.find("def")
-    function = function.split("\n")
-    function = "\n".join(x[where:] for x in function)
+    for path_to_trainer in \
+        ("sft_trainer.SFTTrainer", "dpo_trainer.DPOTrainer", "kto_trainer.KTOTrainer"):
 
-    check_text = \
-    "\n"\
-    "if self._inner_training_loop.__name__ != '_fast_inner_training_loop':\n"\
-    "    raise RuntimeError(\n"\
-    "       'Please do not edit specific areas of the Unsloth codebase or you will get CUDA segfaults.'\n"\
-    "    )\n"\
-    "pass\n"\
-    "import subprocess, re, gc, numpy as np\n"\
-    "a = np.array([0,])\n"\
-    "try:\n"\
-    "    a = subprocess.check_output('nvidia-smi --query-gpu=memory.used --format=csv', shell = True)\n"\
-    "    a = re.findall(rb'([\\d]{1,})[\\s]{1,}M', a)\n"\
-    "    a = np.array([int(x.decode('utf-8'))/1024 for x in a])\n"\
-    "except:\n"\
-    "    if not torch.cuda.is_available():\n"\
-    "        raise RuntimeError('Unsloth: We do not support AMD / Intel machines yet - it is a work in progress!')\n"\
-    "if ((a - PRE_CHECK) >= 1).sum() > 1:\n"\
-    "    raise RuntimeError('Unsloth currently does not support multi GPU setups - but we are working on it!')\n"\
-    "for _ in range(3):\n"\
-    "    gc.collect()\n"\
-    "    torch.cuda.empty_cache()\n"\
-    "pass\n"\
-    "\n"\
-    "fix_untrained_tokens(self.model, self.tokenizer, self.train_dataset, eps = 1e-16)\n\n"
+        function_name, replacer = "train", "if resume_from_checkpoint is False:"
+        function = getsource(eval(f"trl.trainer.{path_to_trainer}.{function_name}"))
+        where = function.find("def")
+        function = function.split("\n")
+        function = "\n".join(x[where:] for x in function)
 
-    check_text = check_text.split("\n")
-    check_text = "\n".join(" "*where + x for x in check_text)
+        check_text = \
+        "\n"\
+        "if self._inner_training_loop.__name__ != '_fast_inner_training_loop':\n"\
+        "    raise RuntimeError(\n"\
+        "       'Please do not edit specific areas of the Unsloth codebase or you will get CUDA segfaults.'\n"\
+        "    )\n"\
+        "pass\n"\
+        "import subprocess, re, gc, numpy as np\n"\
+        "a = np.array([0,])\n"\
+        "try:\n"\
+        "    a = subprocess.check_output('nvidia-smi --query-gpu=memory.used --format=csv', shell = True)\n"\
+        "    a = re.findall(rb'([\\d]{1,})[\\s]{1,}M', a)\n"\
+        "    a = np.array([int(x.decode('utf-8'))/1024 for x in a])\n"\
+        "except:\n"\
+        "    if not torch.cuda.is_available():\n"\
+        "        raise RuntimeError('Unsloth: We do not support AMD / Intel machines yet - it is a work in progress!')\n"\
+        "if ((a - PRE_CHECK) >= 1).sum() > 1:\n"\
+        "    raise RuntimeError('Unsloth currently does not support multi GPU setups - but we are working on it!')\n"\
+        "for _ in range(3):\n"\
+        "    gc.collect()\n"\
+        "    torch.cuda.empty_cache()\n"\
+        "pass\n"\
+        "\n"\
+        "fix_untrained_tokens(self.model, self.tokenizer, self.train_dataset, eps = 1e-16)\n\n"
 
-    function = function.replace(replacer, check_text + replacer)
-    exec(function, globals())
+        # Add NEFTune since it doesn't seem to work?? We need to manually inject it
+        check_text += \
+        "\n"\
+        "if hasattr(self, 'neftune_hook_handle'):\n"\
+        "    self.neftune_hook_handle.remove()\n"\
+        "    if hasattr(self, 'neftune_hook_handle'): del self.neftune_hook_handle\n"\
+        "\n"\
+        "if getattr(self, 'neftune_noise_alpha', None) is not None:\n"\
+        "    self.model.get_input_embeddings().neftune_noise_alpha = self.neftune_noise_alpha\n"\
+        "    self.neftune_hook_handle = self.model.get_input_embeddings().register_forward_hook(neftune_post_forward_hook)\n"\
+        "pass\n"\
+        "\n"
 
-    exec(f"trl.trainer.sft_trainer.SFTTrainer.{function_name} = {function_name}", globals())
+        # Also DPO weirdly tokenizes non numeric columns? Delete them!
+        check_text += \
+        "\n"\
+        "column_names = set(self.train_dataset.column_names)\n"\
+        "check = ['chosen', 'rejected', 'prompt', 'chosen_input_ids', 'chosen_attention_mask',\n"\
+        " 'chosen_labels', 'rejected_input_ids', 'rejected_attention_mask', 'rejected_labels',\n"\
+        " 'prompt_input_ids', 'prompt_attention_mask']\n"\
+        "if all(x in column_names for x in check):\n"\
+        "    self.train_dataset = self.train_dataset.remove_columns(['chosen', 'rejected', 'prompt'])\n"\
+        "del check, column_names\n"\
+        "\n"
+
+        check_text = check_text.split("\n")
+        check_text = "\n".join(" "*where + x for x in check_text)
+
+        function = function.replace(replacer, check_text + replacer)
+        exec(function, globals())
+
+        exec(f"trl.trainer.{path_to_trainer}.{function_name} = {function_name}", globals())
+    pass
 pass
 
 patch_sft_trainer_tokenizer()

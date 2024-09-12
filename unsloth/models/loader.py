@@ -13,14 +13,16 @@
 # limitations under the License.
 
 from ._utils import is_bfloat16_supported, HAS_FLASH_ATTENTION, HAS_FLASH_ATTENTION_SOFTCAPPING
-from .llama import FastLlamaModel, logger
+from .llama   import FastLlamaModel, logger
 from .mistral import FastMistralModel
-from .qwen2 import FastQwen2Model
+from .qwen2   import FastQwen2Model
+from .cohere  import FastCohereModel
 from transformers import AutoConfig
 from transformers import __version__ as transformers_version
 from peft import PeftConfig, PeftModel
-from .mapper import INT_TO_FLOAT_MAPPER, FLOAT_TO_INT_MAPPER
+from .mapper import INT_TO_FLOAT_MAPPER, FLOAT_TO_INT_MAPPER, MAP_TO_UNSLOTH_16bit
 import os
+from huggingface_hub.utils._token import get_token
 
 # https://github.com/huggingface/transformers/pull/26037 allows 4 bit loading!
 from packaging.version import Version
@@ -39,13 +41,16 @@ pass
 def __get_model_name(
     model_name,
     load_in_4bit = True,
-    INT_TO_FLOAT_MAPPER = None,
-    FLOAT_TO_INT_MAPPER = None,
+    INT_TO_FLOAT_MAPPER  = None,
+    FLOAT_TO_INT_MAPPER  = None,
+    MAP_TO_UNSLOTH_16bit = None,
 ):
-
     model_name = str(model_name)
-    if not SUPPORTS_FOURBIT and model_name.lower() in INT_TO_FLOAT_MAPPER:
-        model_name = INT_TO_FLOAT_MAPPER[model_name.lower()]
+    lower_model_name = model_name.lower()
+
+    if not SUPPORTS_FOURBIT and lower_model_name in INT_TO_FLOAT_MAPPER:
+
+        model_name = INT_TO_FLOAT_MAPPER[lower_model_name]
         logger.warning_once(
             f"Unsloth: Your transformers version of {transformers_version} does not support native "\
             f"4bit loading.\nThe minimum required version is 4.37.\n"\
@@ -55,16 +60,23 @@ def __get_model_name(
         )
         return model_name
     
-    elif not load_in_4bit and model_name.lower() in INT_TO_FLOAT_MAPPER:
-        new_model_name = INT_TO_FLOAT_MAPPER[model_name.lower()]
+    elif not load_in_4bit and lower_model_name in INT_TO_FLOAT_MAPPER:
+
+        new_model_name = INT_TO_FLOAT_MAPPER[lower_model_name]
         # logger.warning_once(
         #     f"Unsloth: You passed in `{model_name}` which is a 4bit model, yet you set\n"\
         #     f"`load_in_4bit = False`. We shall load `{new_model_name}` instead."
         # )
         return new_model_name
 
-    elif load_in_4bit and SUPPORTS_FOURBIT and model_name.lower() in FLOAT_TO_INT_MAPPER:
-        new_model_name = FLOAT_TO_INT_MAPPER[model_name.lower()]
+    elif not load_in_4bit and lower_model_name in MAP_TO_UNSLOTH_16bit:
+
+        new_model_name = MAP_TO_UNSLOTH_16bit[lower_model_name]
+        return new_model_name
+
+    elif load_in_4bit and SUPPORTS_FOURBIT and lower_model_name in FLOAT_TO_INT_MAPPER:
+
+        new_model_name = FLOAT_TO_INT_MAPPER[lower_model_name]
         # logger.warning_once(
         #     f"Unsloth: You passed in `{model_name}` and `load_in_4bit = True`.\n"\
         #     f"We shall load `{new_model_name}` for 4x faster loading."
@@ -83,12 +95,14 @@ def _get_new_mapper():
         with requests.get(new_mapper, timeout = 3) as new_mapper: new_mapper = new_mapper.text
         new_mapper = new_mapper[new_mapper.find("__INT_TO_FLOAT_MAPPER"):]
         new_mapper = new_mapper\
-            .replace("INT_TO_FLOAT_MAPPER", "NEW_INT_TO_FLOAT_MAPPER")\
-            .replace("FLOAT_TO_INT_MAPPER", "NEW_FLOAT_TO_INT_MAPPER")
+            .replace("INT_TO_FLOAT_MAPPER",  "NEW_INT_TO_FLOAT_MAPPER")\
+            .replace("FLOAT_TO_INT_MAPPER",  "NEW_FLOAT_TO_INT_MAPPER")\
+            .replace("MAP_TO_UNSLOTH_16bit", "NEW_MAP_TO_UNSLOTH_16bit")
+
         exec(new_mapper, globals())
-        return NEW_INT_TO_FLOAT_MAPPER, NEW_FLOAT_TO_INT_MAPPER
+        return NEW_INT_TO_FLOAT_MAPPER, NEW_FLOAT_TO_INT_MAPPER, NEW_MAP_TO_UNSLOTH_16bit
     except:
-        return {}, {}
+        return {}, {}, {}
     pass
 pass
 
@@ -97,17 +111,19 @@ def get_model_name(model_name, load_in_4bit = True):
     new_model_name = __get_model_name(
         model_name = model_name,
         load_in_4bit = load_in_4bit,
-        INT_TO_FLOAT_MAPPER = INT_TO_FLOAT_MAPPER,
-        FLOAT_TO_INT_MAPPER = FLOAT_TO_INT_MAPPER,
+        INT_TO_FLOAT_MAPPER  = INT_TO_FLOAT_MAPPER,
+        FLOAT_TO_INT_MAPPER  = FLOAT_TO_INT_MAPPER,
+        MAP_TO_UNSLOTH_16bit = MAP_TO_UNSLOTH_16bit,
     )
     if new_model_name is None and model_name.count("/") == 1 and model_name[0].isalnum():
         # Try checking if a new Unsloth version allows it!
-        NEW_INT_TO_FLOAT_MAPPER, NEW_FLOAT_TO_INT_MAPPER = _get_new_mapper()
+        NEW_INT_TO_FLOAT_MAPPER, NEW_FLOAT_TO_INT_MAPPER, NEW_MAP_TO_UNSLOTH_16bit = _get_new_mapper()
         upgraded_model_name = __get_model_name(
             model_name = model_name,
             load_in_4bit = load_in_4bit,
-            INT_TO_FLOAT_MAPPER = NEW_INT_TO_FLOAT_MAPPER,
-            FLOAT_TO_INT_MAPPER = NEW_FLOAT_TO_INT_MAPPER,
+            INT_TO_FLOAT_MAPPER  = NEW_INT_TO_FLOAT_MAPPER,
+            FLOAT_TO_INT_MAPPER  = NEW_FLOAT_TO_INT_MAPPER,
+            MAP_TO_UNSLOTH_16bit = NEW_MAP_TO_UNSLOTH_16bit,
         )
         if upgraded_model_name is not None:
             raise NotImplementedError(
@@ -138,12 +154,8 @@ class FastLanguageModel(FastLlamaModel):
         revision                   = None,
         *args, **kwargs,
     ):
-        if token is None and "HF_TOKEN" in os.environ:
-            token = os.environ["HF_TOKEN"]
-
-        if token is None and "HUGGINGFACE_TOKEN" in os.environ:
-            token = os.environ["HUGGINGFACE_TOKEN"]
-
+        if token is None: token = get_token()
+        
         old_model_name = model_name
         model_name = get_model_name(model_name, load_in_4bit)
 
@@ -155,13 +167,23 @@ class FastLanguageModel(FastLlamaModel):
         autoconfig_error = None
         peft_error = None
         try:
-            model_config = AutoConfig.from_pretrained(model_name, token = token, revision = revision)
+            model_config = AutoConfig.from_pretrained(
+                model_name,
+                token = token,
+                revision = revision,
+                trust_remote_code = trust_remote_code,
+            )
             is_model = True
         except Exception as error:
             autoconfig_error = str(error)
             is_model = False
         try:
-            peft_config = PeftConfig .from_pretrained(model_name, token = token, revision = revision)
+            peft_config = PeftConfig.from_pretrained(
+                model_name,
+                token = token,
+                revision = revision,
+                trust_remote_code = trust_remote_code,
+            )
             is_peft = True
         except Exception as error:
             peft_error = str(error)
@@ -193,7 +215,12 @@ class FastLanguageModel(FastLlamaModel):
         if is_peft:
             # Check base model again for PEFT
             model_name = get_model_name(peft_config.base_model_name_or_path, load_in_4bit)
-            model_config = AutoConfig.from_pretrained(model_name, token = token, revision = revision)
+            model_config = AutoConfig.from_pretrained(
+                model_name,
+                token = token,
+                revision = revision,
+                trust_remote_code = trust_remote_code,
+            )
         pass
 
         if not was_disabled: enable_progress_bars()
@@ -252,6 +279,8 @@ class FastLanguageModel(FastLlamaModel):
             dispatch_model = FastGemma2Model
         elif model_type == "qwen2":
             dispatch_model = FastQwen2Model
+        elif model_type == "cohere":
+            dispatch_model = FastCohereModel
         else:
             raise NotImplementedError(
                 f"Unsloth: {model_name} not supported yet!\n"\
@@ -326,6 +355,7 @@ class FastLanguageModel(FastLlamaModel):
                 token = token,
                 revision = revision,
                 is_trainable = True,
+                trust_remote_code = trust_remote_code,
             )
             # Patch it as well!
             model = dispatch_model.patch_peft_model(model, use_gradient_checkpointing)

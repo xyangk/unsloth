@@ -227,6 +227,7 @@ __INT_TO_FLOAT_MAPPER = \
         "meta-llama/Meta-Llama-3.1-8B-Instruct",
     ),
     "unsloth/Meta-Llama-3.1-70B-bnb-4bit" : (
+        "unsloth/Meta-Llama-3.1-70B",
         "meta-llama/Meta-Llama-3.1-70B",
     ),
     "unsloth/Meta-Llama-3.1-405B-bnb-4bit" : (
@@ -236,6 +237,7 @@ __INT_TO_FLOAT_MAPPER = \
         "meta-llama/Meta-Llama-3.1-405B-Instruct",
     ),
     "unsloth/Meta-Llama-3.1-70B-Instruct-bnb-4bit" : (
+        "unsloth/Meta-Llama-3.1-70B-Instruct",
         "meta-llama/Meta-Llama-3.1-70B-Instruct",
     ),
     "unsloth/Mistral-Large-Instruct-2407-bnb-4bit" : (
@@ -249,16 +251,50 @@ __INT_TO_FLOAT_MAPPER = \
         "unsloth/gemma-2-2b-it",
         "google/gemma-2-2b-it",
     ),
+    "unsloth/Phi-3.5-mini-instruct-bnb-4bit" : (
+        "unsloth/Phi-3.5-mini-instruct",
+        "microsoft/Phi-3.5-mini-instruct",
+    ),
+    "unsloth/c4ai-command-r-08-2024-bnb-4bit" : (
+        "CohereForAI/c4ai-command-r-08-2024",
+    ),
+    "unsloth/c4ai-command-r-plus-08-2024-bnb-4bit" : (
+        "CohereForAI/c4ai-command-r-plus-08-2024",
+    ),
+    "unsloth/Llama-3.1-Storm-8B-bnb-4bit" : (
+        "unsloth/Llama-3.1-Storm-8B",
+        "akjindal53244/Llama-3.1-Storm-8B",
+    ),
+    "unsloth/Hermes-3-Llama-3.1-8B-bnb-4bit" : (
+        "unsloth/Hermes-3-Llama-3.1-8B",
+        "NousResearch/Hermes-3-Llama-3.1-8B",
+    ),
+    "unsloth/Hermes-3-Llama-3.1-70B-bnb-4bit" : (
+        "unsloth/Hermes-3-Llama-3.1-70B",
+        "NousResearch/Hermes-3-Llama-3.1-70B",
+    ),
+    "unsloth/Hermes-3-Llama-3.1-405B-bnb-4bit" : (
+        "NousResearch/Hermes-3-Llama-3.1-405B",
+    ),
 }
 
-INT_TO_FLOAT_MAPPER = {}
-FLOAT_TO_INT_MAPPER = {}
+INT_TO_FLOAT_MAPPER  = {}
+FLOAT_TO_INT_MAPPER  = {}
+MAP_TO_UNSLOTH_16bit = {}
 
 for key, values in __INT_TO_FLOAT_MAPPER.items():
     INT_TO_FLOAT_MAPPER[key] = values[0]
 
     for value in values:
         FLOAT_TO_INT_MAPPER[value] = key
+    pass
+
+    # Map to Unsloth version for 16bit versions
+    if len(values) == 2:
+        if values[0].startswith("unsloth"):
+            MAP_TO_UNSLOTH_16bit[values[1]] = values[0]
+            MAP_TO_UNSLOTH_16bit[values[1].lower()] = values[0]
+        pass
     pass
 
     # Get lowercased

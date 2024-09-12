@@ -33,13 +33,13 @@ from .fast_lora import (
 )
 from .utils import fast_dequantize, fast_gemv, QUANT_STATE, fast_linear_forward, matmul_lora
 
-from .flex_attention import HAS_FLEX_ATTENTION, slow_attention_softcapping
-
-if HAS_FLEX_ATTENTION:
-    from .flex_attention import (
-        FLEX_ATTENTION_PADDING,
-    )
-pass
+from .flex_attention import (
+    HAS_FLEX_ATTENTION,
+    slow_attention_softcapping,
+    slow_inference_attention_softcapping,
+    create_flex_attention_causal_mask,
+    create_flex_attention_sliding_window_mask,
+)
 
 try:
     print("🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.")
